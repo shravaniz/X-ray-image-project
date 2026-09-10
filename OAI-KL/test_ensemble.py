@@ -132,7 +132,7 @@ for i in range(test_image_num):
             
         probs_ensemble[i][j] = (globals()[f"{'5fold_epoch30_submission.csv'}_probs"][i][j] + globals()[f"{'2fold_epoch5_submission.csv'}_probs"][i][j] + globals()[f"{'5fold_epoch19_submission.csv'}_probs"][i][j]) / 3 """
 
-# 자동 Ensemble : 가중치 1로 고정
+
 for i in submission_list_csv:
     for j in range(test_image_num):
         for k in range(5):

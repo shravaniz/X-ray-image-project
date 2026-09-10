@@ -29,13 +29,13 @@ class EarlyStopping:
             print(f"Valid Loss ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving Model ...")
             
         image_size_tuple = (args.image_size, args.image_size)
-        save_path = f'./models/{args.model_type}/{image_size_tuple}'
+        save_path = f'./models4/{args.model_type}/{image_size_tuple}'
         os.makedirs(save_path, exist_ok=True)
         if isinstance(model, nn.DataParallel):
             torch.save(model.module.state_dict(), f'{save_path}/{fold}fold_epoch{epoch}.pt')
         else:
             torch.save(model.state_dict(), f'{save_path}/{fold}fold_epoch{epoch}.pt')
-        # torch.save(model, f"./models/{args.model_type}/{image_size_tuple}/{fold}fold_epoch{epoch}.pt")
+        # torch.save(model, f"./models4/{args.model_type}/{image_size_tuple}/{fold}fold_epoch{epoch}.pt")
             
         self.val_loss_min = val_loss
         
