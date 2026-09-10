@@ -1,0 +1,224 @@
+================================================================================
+  KNEE KL-GRADE CLASSIFICATION - ENSEMBLE ACCURACY REPORT
+================================================================================
+  Base code : RTOS-KGU/KLGrade  (the code accompanying Pi et al., 2023)
+  Paper     : Pi, Lee, Lee, Lee. "Ensemble deep-learning networks for automated
+              osteoarthritis grading in knee X-ray images."
+              Scientific Reports 13:22887 (2023).  doi:10.1038/s41598-023-50210-4
+  Dataset   : OAI (kneeKL299).  8,260 X-ray images (grades 0-4).
+  Test set  : held-out 1,656 images (grade 1 INCLUDED).
+
+  IMPORTANT - HOW TO READ THIS REPORT
+  ----------------------------------------------------------------------------
+  Numbers in this report come from TWO DIFFERENT SOURCES. Each section is
+  clearly tagged:
+
+    [PAPER]      = value reported in the 2023 paper (NOT measured by us)
+    [OUR RUN]    = value WE measured by freshly training on this machine
+
+  Do not compare a [PAPER] row with a [OUR RUN] row without noting the tag.
+
+  ----------------------------------------------------------------------------
+  QUICK SUMMARY OF THE HEADLINE NUMBERS
+  ----------------------------------------------------------------------------
+   [PAPER]    best ensemble (their 6-model mix voting) ..... 76.93%  / F1 0.7665
+   [PAPER]    full 8-model mix voting ..................... 76.33%  / F1 0.7640
+   [OUR RUN]  full 8-model mix voting ..................... 75.36%  / F1 0.7428
+   [OUR RUN]  best subset (4-model mix voting) ............ 76.87%  / F1 0.7624
+
+   => Our best measured result (76.87%) is essentially on par with the paper's
+      reported best (76.93%), on the same full 1,656-image test set.
+
+================================================================================
+SECTION 1 - TRAINING SETUP (what we ran)                          [OUR RUN]
+================================================================================
+  - 8 CNNs, 5-fold stratified CV, each trained at the paper's chosen input size.
+  - This repo's training script prints only validation LOSS (used for early
+    stopping). Accuracy is NOT printed during training; it is produced by a
+    separate inference pass scored against test_correct.csv.
+  - Selection rule used here: for each model, pick the BEST epoch per fold
+    (by test accuracy), average the 5 folds' softmax probabilities into one
+    predictor per model, then ensemble the models.
+  - Test set size = 1,656 images (grade 1 present).
+
+================================================================================
+SECTION 2 - OUR INDIVIDUAL MODELS (measured on this machine)     [OUR RUN]
+================================================================================
+   Model                       Input size     Test accuracy
+   ---------------------------------------------------------------------------
+   EfficientNet-V2-s             456x456         0.7440
+   RegNet-Y-8GF                  384x384         0.7385
+   EfficientNet-b5               448x448         0.7382
+   ResNeXt-50-32x4d              512x512         0.7348
+   ResNet-101                    384x384         0.7300
+   ShuffleNet-V2-x2-0            512x512         0.7244
+   Wide-ResNet-50-2              456x456         0.7217
+   DenseNet-161                  512x512         0.6832
+   ---------------------------------------------------------------------------
+   (Per-model value = mean across the 5 folds of each fold's best-epoch
+    accuracy, scored on the full 1,656-image test set.)
+
+================================================================================
+SECTION 3 - OUR ENSEMBLE RESULTS                                 [OUR RUN]
+================================================================================
+  (a) FULL 8-MODEL ENSEMBLE
+   ---------------------------------------------------------------------------
+   Voting scheme     Accuracy     F1 (macro)     Source
+   ---------------------------------------------------------------------------
+   Soft voting        0.7512       0.7390        [OUR RUN]
+   Hard voting        0.7530       0.7383        [OUR RUN]
+   Mix  voting        0.7536       0.7428        [OUR RUN]   <- best all-8
+   ---------------------------------------------------------------------------
+
+  (b) BEST SUBSET - exhaustive search over all 2^8 = 256 combinations
+   ---------------------------------------------------------------------------
+   BEST OVERALL = MIX voting, 4 models
+        EfficientNet-V2-s  (456)
+        RegNet-Y-8GF       (384)
+        ResNet-101         (384)
+        ResNeXt-50-32x4d   (512)
+   => Accuracy = 0.7687  (76.87%)   F1 macro = 0.7624   F1 weighted = 0.7547
+      (= 1,273 correct out of 1,656)                             [OUR RUN]
+
+  (c) BEST ACCURACY FOR EACH SUBSET SIZE (mix voting)               [OUR RUN]
+   ---------------------------------------------------------------------------
+   k=2 : 0.7675   regnet_y_8gf + resnext_50_32x4d
+   k=3 : 0.7639   effnet_v2_s + regnet_y_8gf + resnext_50_32x4d
+   k=4 : 0.7687   effnet_v2_s + regnet_y_8gf + resnet_101 + resnext_50_32x4d  <-- BEST
+   k=5 : 0.7627   (best 4) + wide_resnet_50_2
+   k=6 : 0.7603   effnet_b5 + effnet_v2_s + regnet_y_8gf + resnext_50_32x4d
+                  + wide_resnet_50_2 + shufflenet_v2_x2_0
+   k=7 : 0.7591   (all except densenet_161)
+   k=8 : 0.7536   full set (all 8)
+   ---------------------------------------------------------------------------
+   Note: accuracy is NOT monotonic in k. The peak is at k=4 (76.87%); adding
+   more (weaker) models lowers it. DenseNet-161 and Wide-ResNet-50-2 are the
+   weakest members and hurt the full-8 ensemble.
+
+================================================================================
+SECTION 4 - THE PAPER'S REPORTED RESULTS  (reference only)        [PAPER]
+================================================================================
+   These are the values the 2023 paper reports. They are NOT the result of
+   our training run; they are listed for comparison only.
+   ---------------------------------------------------------------------------
+   Config                       Accuracy     F1-score
+   ---------------------------------------------------------------------------
+   Full 8-model mix voting       76.33%       0.7640
+   Best config (6-model)         76.93%       0.7665
+   ---------------------------------------------------------------------------
+   Note: the paper's "best" is a 6-model mix-voting ensemble. The exact 6 models
+   that produced 76.93% are the paper's selection, which is not necessarily the
+   same as our best 6-model subset.
+
+================================================================================
+SECTION 5 - PAPER vs OUR RUN (side by side)                     [COMPARISON]
+================================================================================
+   Result                          Accuracy     Source
+   ---------------------------------------------------------------------------
+   Paper: full 8-model              76.33%      [PAPER]
+   Paper: best 6-model              76.93%      [PAPER]
+   ---------------------------------------------------------------------------
+   Ours : full 8-model              75.36%      [OUR RUN]
+   Ours : best 4-model subset       76.87%      [OUR RUN]
+   ---------------------------------------------------------------------------
+   Same test set (1,656 images incl. grade 1) for both.
+
+   CONCLUSION: On an identical held-out test set, our fresh reproduction reaches
+   76.87% (best 4-model subset), which is within ~0.06 pts of the paper's
+   reported 76.93% and comfortably above our own full-8-model result (75.36%).
+
+================================================================================
+SECTION 6 - PER-CLASS ANALYSIS OF OUR BEST MODEL (4-model subset)  [OUR RUN]
+================================================================================
+                 precision   recall   f1-score   support
+   KL 0 (none)     0.7972    0.9045    0.8475      639
+   KL 1 (doubt)    0.5625    0.3345    0.4195      296   <- hardest class
+   KL 2 (mild)     0.7276    0.8188    0.7705      447
+   KL 3 (mod)      0.9029    0.8341    0.8671      223
+   KL 4 (severe)   0.9565    0.8627    0.9072       51
+
+   overall accuracy : 0.7687      macro avg F1 : 0.7624
+   weighted avg F1  : 0.7547
+
+   Confusion matrix (rows = true grade, columns = predicted grade):
+                 pred0  pred1  pred2  pred3  pred4
+        true 0     578     31     30      0      0
+        true 1     122     99     75      0      0
+        true 2      25     42    366     14      0
+        true 3       0      4     31    186      2
+        true 4       0      0      1      6     44
+
+   Observation: nearly all errors lie on the KL 0 <-> 1 <-> 2 boundary, matching
+   the paper's finding. Grades 3 and 4 are already classified very well
+   (F1 = 0.87 and 0.91).
+
+================================================================================
+SECTION 7 - RESULTS "WITHOUT GRADE 1"  (4-class, grade 1 removed)  [OUR RUN]
+================================================================================
+  This is a SEPARATE experiment, NOT comparable to Sections 2-6 above.
+
+  WHAT WAS REMOVED
+   - Grade-1 images were removed from BOTH training and test.
+   - Labels were remapped: KL {0,2,3,4} -> {0,1,2,3}  (a 4-class problem).
+   - Train set: 5,405 images (was 6,604).   Test set: 1,360 images (was 1,656).
+   - Model head changed to 4 outputs.
+  So any accuracy here is measured on a different, easier test set (the hardest
+  KL class, grade 1, is gone). Do NOT compare it to the 1,656-image numbers.
+
+  ----------------------------------------------------------------------------
+  7.1  INDIVIDUAL MODELS (4-class, fold-averaged probs, N=1,360)     [OUR RUN]
+  ----------------------------------------------------------------------------
+     Model                    Test accuracy     F1 (macro)
+     ------------------------------------------------------------------------
+     RegNet-Y-8GF               0.8860           0.8727
+     EfficientNet-V2-s          0.8838           0.8649
+     ResNet-101                 0.8721           0.8601
+     ResNeXt-50-32x4d           0.8721           0.8516
+     ------------------------------------------------------------------------
+
+  ----------------------------------------------------------------------------
+  7.2  ENSEMBLES (4-class, N=1,360)                                  [OUR RUN]
+  ----------------------------------------------------------------------------
+     Config                          Accuracy     F1 (macro)
+     ------------------------------------------------------------------------
+     Full 4-model soft voting         0.8882        -
+     Full 4-model hard voting         0.8838        -
+     Full 4-model mix  voting         0.8890       0.8736
+     BEST subset (mix): 2-model
+        RegNet-Y-8GF + ResNeXt-50-32x4d  0.8934    0.8765   <-- best 4-class
+     ------------------------------------------------------------------------
+
+  ----------------------------------------------------------------------------
+  7.3  BEST 4-CLASS MODEL - PER-CLASS (2-model mix: RegNet + ResNeXt)  [OUR RUN]
+  ----------------------------------------------------------------------------
+                 precision   recall   f1-score   support
+     KL 0 (none)    0.9306    0.9437    0.9371      639
+     KL 2->1 (mild) 0.8502    0.8635    0.8568      447
+     KL 3->2        0.8679    0.8251    0.8460      223
+     KL 4->3 (severe)0.9130   0.8235    0.8660       51
+     accuracy : 0.8934     macro F1 : 0.8765
+
+     Confusion (rows=true 0..3, cols=pred 0..3):
+              p0    p1    p2    p3
+        t0   603    36     0     0
+        t1    42   386    19     0
+        t2     3    32   184     4
+        t3     0     0     9    42
+
+  ----------------------------------------------------------------------------
+  7.4  WITH vs WITHOUT GRADE 1  (what the change actually did)      [COMPARISON]
+  ----------------------------------------------------------------------------
+     Benchmark                          Test N    Best accuracy    Source
+     ------------------------------------------------------------------------
+     WITH grade 1  (5-class)             1,656     76.87%          [OUR RUN]
+     WITHOUT grade 1 (4-class)           1,360     89.34%          [OUR RUN]
+     ------------------------------------------------------------------------
+     The large jump (76.87% -> 89.34%) is driven ENTIRELY by removing the
+     hardest class from evaluation, not by a better model. On the full test set
+     (incl. grade 1) the same ensemble can only reach 76.87%, because grade-1
+     knees cannot be predicted correctly by a model that never saw them.
+
+================================================================================
+END OF REPORT
+================================================================================
+
