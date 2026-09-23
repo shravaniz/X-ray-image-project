@@ -37,7 +37,10 @@ BEST_EPOCHS = {
     'resnext_50_32x4d':  {1: 11, 2: 11, 3: 12, 4: 16, 5: 13},
 }
 
-MODELS_DIR = os.environ.get('KL_MODELS_DIR', './models')
+# Prefer the small, self-contained inference folder (20 checkpoints) shipped
+# with the repo; fall back to the full training output if it is absent.
+_DEFAULT_DIR = './models_inference' if os.path.isdir('./models_inference') else './models'
+MODELS_DIR = os.environ.get('KL_MODELS_DIR', _DEFAULT_DIR)
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 GRADE_DESC = {
