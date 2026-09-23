@@ -1,0 +1,2 @@
+# Extra dependency for the KL-Grade web UI (app.py)
+gradio>=4.0
