@@ -48,8 +48,12 @@ def run(image):
     conf = float(probs[grade]) * 100
     html += f"<p>Model confidence for this grade: <b>{conf:.1f}%</b></p>"
 
-    chart = pd.DataFrame({"probability": [float(p) for p in probs]},
-                         index=[f"KL {i}" for i in range(5)])
+    # BarPlot needs the categories as a real column (it ignores the DataFrame
+    # index), plus an explicit x/y mapping.
+    chart = pd.DataFrame({
+        "grade": [f"KL {i}" for i in range(5)],
+        "probability": [float(p) for p in probs],
+    })
     return html, chart
 
 
@@ -74,8 +78,10 @@ def main():
             with gr.Column(scale=1):
                 out_html = gr.HTML("<p>Prediction will appear here.</p>")
                 out_chart = gr.BarPlot(
-                    x=None, y="probability", title="Class probabilities",
-                    y_lim=[0, 1], height=280, tooltip="probability")
+                    x="grade", y="probability", title="Class probabilities",
+                    x_title="KL grade", y_title="probability",
+                    y_lim=[0, 1], height=280, tooltip="probability",
+                    color="grade", sort="grade", x_label_angle=0)
 
         btn.click(run, inputs=inp, outputs=[out_html, out_chart])
         inp.change(run, inputs=inp, outputs=[out_html, out_chart])
